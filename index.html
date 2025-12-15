@@ -1,0 +1,206 @@
+<!DOCTYPE html><html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>UAS DDP — Engineer Mode (Final Clean Grid)</title>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">  <style>
+    *{margin:0;padding:0;box-sizing:border-box;font-family:'JetBrains Mono', monospace;}
+
+    body{
+      min-height:100vh;
+      background:#020617;
+      color:#e5e7eb;
+      display:flex;
+      justify-content:center;
+      align-items:center;
+      overflow:hidden;
+    }
+
+    body::before{
+      content:"";
+      position:absolute;
+      inset:0;
+      background-image:
+        linear-gradient(rgba(255,255,255,.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,.04) 1px, transparent 1px);
+      background-size:42px 42px;
+      pointer-events:none;
+    }
+
+    .container{z-index:2;width:100%;max-width:900px;padding:32px;text-align:center;}
+
+    .opening p{color:#94a3b8;margin-bottom:14px;font-size:.95rem;}
+
+    .btn{
+      padding:14px 36px;
+      border-radius:10px;
+      border:1px solid #38bdf8;
+      background:transparent;
+      color:#38bdf8;
+      font-weight:600;
+      cursor:pointer;
+      transition:.25s;
+    }
+    .btn:hover{background:#38bdf8;color:#020617;}
+
+    .surprise{display:none;animation:fadeIn .4s ease forwards;}
+
+    .panel{
+      background:#020617;
+      border-radius:14px;
+      padding:28px;
+      box-shadow:0 25px 60px rgba(0,0,0,.6);
+      text-align:left;
+    }
+
+    .panel-header{display:flex;gap:8px;margin-bottom:16px;}
+    .dot{width:12px;height:12px;border-radius:50%;}
+    .red{background:#ef4444;} .yellow{background:#facc15;} .green{background:#22c55e;}
+
+    .terminal{font-size:0.95rem;line-height:1.8;white-space:pre-wrap;}
+    .green-t{color:#22c55e;} .gray{color:#94a3b8;} .error{color:#ef4444;}
+    .cursor{display:inline-block;width:10px;animation:blink 1s steps(1) infinite;}
+
+    /* input */
+    .input-area{margin-top:16px;}
+    .input-hint{color:#64748b;font-size:.8rem;margin-bottom:6px;}
+    .input-box{
+      display:flex;align-items:center;gap:8px;
+      border:1px solid #38bdf8;border-radius:8px;
+      padding:8px 10px;max-width:320px;
+    }
+    .input-box span{color:#38bdf8;}
+    .input-box input{background:transparent;border:none;outline:none;color:#e5e7eb;flex:1;}
+
+    /* photos – tetap grid rapi */
+    .photos{
+      display:grid;
+      grid-template-columns:repeat(3,1fr);
+      gap:18px;
+      margin-top:26px;
+      position:relative;
+    }
+
+    .photos img{
+      width:100%;
+      height:160px;
+      object-fit:cover;
+      border-radius:10px;
+      transition:.45s cubic-bezier(.22,1,.36,1);
+    }
+
+    .blur{filter:blur(5px) brightness(.55);}
+
+    /* fokus tapi TETAP di grid (tidak absolute) */
+    .focus{
+      transform:scale(1.15);
+      z-index:2;
+      box-shadow:0 0 0 2px #22c55e, 0 0 20px rgba(34,197,94,.55);
+    }
+
+    .message{margin-top:18px;font-size:.95rem;}
+
+    @keyframes fadeIn{from{opacity:0;}to{opacity:1;}}
+    @keyframes blink{50%{opacity:0;}}
+  
+    /* subtle improvements */
+    .photos img:hover{transform:translateY(-2px) scale(1.02);} 
+    .tag{position:absolute;top:8px;left:8px;background:#020617cc;border:1px solid #334155;border-radius:6px;padding:2px 6px;font-size:.7rem;color:#94a3b8}
+    .shake{animation:shake .35s linear 1}
+    @keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-3px)}75%{transform:translateX(3px)}}
+  </style></head>
+<body><div class="container">  <div class="opening" id="opening">
+    <p>&gt; ready_to_execute()</p>
+    <button class="btn" id="openBtn">RUN PROGRAM</button>
+  </div>  <div class="surprise" id="surpriseBox">
+    <div class="panel">
+      <div class="panel-header">
+        <div class="dot red"></div>
+        <div class="dot yellow"></div>
+        <div class="dot green"></div>
+      </div><div class="terminal" id="terminal"></div><span class="cursor">▌</span>
+
+  <div class="input-area" id="inputArea" style="display:none">
+    <div class="input-hint">masukkan nama panggilan / nama depan saja</div>
+    <div class="input-box">
+      <span>&gt;</span>
+      <input type="text" id="nameInput" placeholder="contoh: ardi" />
+    </div>
+  </div>
+
+  <div class="photos" id="photos">
+    <img data-name="ardi" src="https://images.unsplash.com/photo-1522202176988-66273c2fd55f" />
+    <img data-name="lufita" src="https://images.unsplash.com/photo-1513258496099-48168024aec0" />
+    <img data-name="annisa" src="https://images.unsplash.com/photo-1523580846011-d3a5bc25702b" />
+  </div>
+
+  <div class="message" id="finalMessage"></div>
+</div>
+
+  </div></div><script>
+  const openBtn=document.getElementById('openBtn');
+  const opening=document.getElementById('opening');
+  const surprise=document.getElementById('surpriseBox');
+  const terminal=document.getElementById('terminal');
+  const inputArea=document.getElementById('inputArea');
+  const nameInput=document.getElementById('nameInput');
+  const photos=[...document.querySelectorAll('.photos img')];
+  const finalMessage=document.getElementById('finalMessage');
+
+  const lines=[
+    '> compiling DDP_final_exam...',
+    '> checking logic...',
+    '> memory usage: optimal',
+    '> status: READY',
+    '',
+    '> system_message: Semangat mengerjakan UAS DDP besok gess 🥰'
+  ];
+
+  openBtn.onclick=()=>{
+    opening.style.display='none';
+    surprise.style.display='block';
+    runLogs();
+  };
+
+  function runLogs(){
+    terminal.textContent='';
+    finalMessage.textContent='';
+    inputArea.style.display='none';
+    nameInput.value='';
+    photos.forEach(img=>img.classList.remove('blur','focus'));
+
+    let i=0;
+    const interval=setInterval(()=>{
+      if(i>=lines.length){
+        clearInterval(interval);
+        inputArea.style.display='block';
+        nameInput.focus();
+        return;
+      }
+      terminal.textContent+=lines[i]+'\n';
+      i++;
+    },300);
+  }
+
+  nameInput.addEventListener('keydown',e=>{
+    if(e.key==='Enter') handleName(nameInput.value.trim().toLowerCase());
+  });
+
+  function handleName(name){
+    photos.forEach(img=>{img.classList.add('blur');img.classList.remove('focus');});
+    const target=photos.find(img=>img.dataset.name===name);
+
+    if(target){
+      target.classList.remove('blur');
+      target.classList.add('focus');
+      finalMessage.textContent=`Semangat ya ${capitalize(name)}, kamu pasti bisa, jangan lupa berdoa`;
+      finalMessage.className='message green-t';
+    }else{
+      finalMessage.textContent='ERROR: user not recognized';
+      finalMessage.className='message error';
+    }
+  }
+
+  function capitalize(str){return str.charAt(0).toUpperCase()+str.slice(1);}
+</script></body>
+</html>
